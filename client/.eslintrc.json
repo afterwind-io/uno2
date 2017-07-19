@@ -1,0 +1,14 @@
+{
+  "extends": "standard",
+  "plugins": [
+    "standard",
+    "promise"
+  ],
+  "rules": {
+    "camelcase": "off",
+    "generator-star-spacing": [
+      "error",
+      "after"
+    ]
+  }
+}

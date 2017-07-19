@@ -1,0 +1,1 @@
+cd ./client &&node ./webpack.server.js

@@ -1,0 +1,37 @@
+{
+  "apps": [
+    {
+      "name": "uno2-backend",
+      "script": "./server/process.sh",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss",
+      "env": {
+        "NODE_ENV": "dev"
+      },
+      "env_production": {
+        "NODE_ENV": "prod"
+      },
+      "watch": [
+        "./server/src"
+      ],
+      "watch_options": {
+        "followSymlinks": false
+      },
+      "autorestart": true
+    },
+    {
+      "name": "uno2-frontend",
+      "script": "./client/process.sh",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss",
+      "env": {
+        "NODE_ENV": "dev"
+      },
+      "env_production": {
+        "NODE_ENV": "prod"
+      }
+    },
+    {
+      "name": "uno2-redis",
+      "script": "./redis/redis-server"
+    }
+  ]
+}

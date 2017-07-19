@@ -1,0 +1,6 @@
+.vscode
+node_modules
+redis
+server/build
+client/build
+dump.rdb

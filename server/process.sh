@@ -1,0 +1,1 @@
+cd ./server &&tsc && node --inspect=5641 ./build/index.js
