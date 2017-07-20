@@ -4,17 +4,22 @@ import User from '../model/user'
 import ws from '../util/websocket'
 import Response from '../util/response'
 
+ws.use(async ({ namespace, route, packet }, next) => {
+  console.log(`[ws] Incoming: ${namespace}/${route} -- ${packet}`)
+  await next()
+})
+
 ws.of('/api')
 
 ws.on('Knock Knock', async packet => {
   return "Who's there?"
 })
 
-ws.on('user/register', async packet => {
+ws.public.on('user/register', async packet => {
   return await User.register(packet)
-}, true)
+})
 
-ws.on('user/login', async packet => {
+ws.public.on('user/login', async packet => {
   const user = await User.login(packet)
   const token = JWT.sign({
     uid: user.uid,
@@ -22,4 +27,4 @@ ws.on('user/login', async packet => {
   }, CONFIG.secret)
 
   return { token, user }
-}, true)
+})
