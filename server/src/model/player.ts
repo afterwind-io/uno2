@@ -59,11 +59,16 @@ export class Player extends JSONify {
 
   static async fetch(uid: string): Promise<Player> {
     let detail = await redis.get(Player.getRedisKey(uid))
-    return detail == null ? void 0 : new Player(detail)
+    return detail == null ? void 0 : Player.parse(detail)
   }
 
   static getRedisKey(uid: string): string {
     return `player:${uid}`
+  }
+
+  static parse(json: string): Player {
+    let detail = <PlayerDetails>JSON.parse(json)
+    return new Player(detail)
   }
 
   constructor(detail: PlayerDetails) {

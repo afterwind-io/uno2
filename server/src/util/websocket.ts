@@ -27,18 +27,19 @@ class WS {
     return this
   }
 
-  on(route: string, handler: WSRouteHandler): WS {
+  on(route: string, handler: WSRouteHandler, skipAuth: boolean = false): WS {
     const nsp = this.io.of(this.namespace)
 
     nsp.on('connection', socket => socket.on(route, async (packet, cb) => {
       const { token, payload } = packet
 
-      // if (!jwtVerify(token)) {
-      //   return cb(Response.err('Authentication failed'))
-      // }
+      if (!skipAuth && !jwtVerify(token)) {
+        cb(Response.err('Authentication failed'))
+        return socket.disconnect()
+      }
 
       try {
-        cb(Response.ok(await handler(packet)))
+        cb(Response.ok(await handler(payload)))
       } catch (error) {
         cb(Response.err(error.message))
       }

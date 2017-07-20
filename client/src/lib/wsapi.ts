@@ -21,23 +21,26 @@ class WSAPI {
   private ws: SocketIOClient.Socket
   private token: string = ''
 
-  public connect(token: string): void {
-    this.ws = io('localhost:13001/api', { query: { token } })
+  public connect(): void {
+    this.ws = io('localhost:13001/api')
+  }
+
+  public setToken(token: string) {
     this.token = token
   }
 
-  public send<T>(api: string, payload: any): Promise<T> {
+  public send<T>(api: string, payload: any = ''): Promise<T> {
     if (this.queue.has(api)) throw new WSAPIError()
 
     return new Promise((resolve, reject) => {
       this.queue.add(api)
 
       let packet = { token: this.token, payload }
-      this.ws.emit(api, packet, (data: any) => {
+      this.ws.emit(api, packet, (data: WSAPIResponse<T>) => {
         this.queue.delete(api)
 
+        console.log(data)
         let res = new WSAPIResponse<T>(data.code, data.payload)
-        console.log(res);
         res.isOk ? resolve(res.payload) : reject(res)
       })
     })

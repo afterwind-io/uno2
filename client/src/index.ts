@@ -11,11 +11,14 @@ new Vue({
 import io from 'socket.io-client'
 import wsapi from './lib/wsapi'
 
-wsapi.connect('doge')
+(async function () {
+  wsapi.connect()
 
-try {
-  wsapi.send('login', { key: 'a' })
-  wsapi.send('test', { key: 'a' })
-} catch (error) {
-  console.error(error);
-}
+  try {
+    // await wsapi.send('user/register', { name: 'doge', password: '123456' })
+    await wsapi.send('user/login', { name: 'doge', password: '123456' })
+    // await wsapi.send('Knock Knock')
+  } catch (error) {
+    console.error(error);
+  }
+})()

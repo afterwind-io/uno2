@@ -101,11 +101,16 @@ export class Room extends JSONify {
 
   static async fetch(uid: number): Promise<Room> {
     let detail = redis.get(Room.getRedisKey(uid))
-    return detail == null ? void 0 : new Room(detail)
+    return detail == null ? void 0 : Room.parse(detail)
   }
 
   static getRedisKey(uid: number): string {
     return `room:${uid}`
+  }
+
+  static parse(json: string): Room {
+    let detail = <RoomDetails>JSON.parse(json)
+    return new Room(detail)
   }
 
   constructor(detail: RoomDetails) {

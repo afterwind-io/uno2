@@ -44,13 +44,9 @@ class User extends JSONify {
   public password: string
 
   static async login({ name, password }: { name: string, password: string }): Promise<User> {
-    let verify = true
-
     let user = await User.fetch(name)
-    if (user === void 0) verify = false
-    if (password !== user.password) verify = false
 
-    if (verify) {
+    if (user !== void 0 && password === user.password) {
       return user
     } else {
       throw new Error('用户名或密码错误')
@@ -58,16 +54,17 @@ class User extends JSONify {
   }
 
   static async register(ctx: { name: string, password: string }): Promise<User> {
-    let user = await User.fetch(ctx.name)
-    if (user !== void 0) throw new Error('该用户名已被注册')
+    let test = await User.fetch(ctx.name)
+    if (test !== void 0) throw new Error('该用户名已被注册')
 
+    let user = new User(ctx)
     await user.save()
     return user
   }
 
   static async fetch(name: string): Promise<User> {
     let detail = await redis.get(User.getRedisKey(name))
-    return detail == null ? void 0 : new User(detail)
+    return detail == null ? void 0 : User.parse(detail)
   }
 
   static getRedisKey(name: string): string {
