@@ -1,4 +1,5 @@
 import * as JWT from 'jsonwebtoken'
+import * as CONFIG from '../config'
 import User from '../model/user'
 import ws from '../util/websocket'
 import Response from '../util/response'
@@ -18,7 +19,7 @@ ws.on('user/login', async packet => {
   const token = JWT.sign({
     uid: user.uid,
     r: Math.random()
-  }, 'DogeWoW')
+  }, CONFIG.secret)
 
   return { token, user }
 }, true)
