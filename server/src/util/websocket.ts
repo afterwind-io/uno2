@@ -24,17 +24,17 @@ function jwtVerify(token: string): boolean {
  * @param {any[]} middlewares 中间件函数
  * @returns 顺序执行所有中间件的辅助方法
  */
-function chain(middlewares: any[]) {
+function chain<T>(middlewares: any[]): (context: T) => () => Promise<void> {
   // context: 在中间件函数间传递的上下文对象
-  return (context:any) => middlewares.reduceRight(
+  return (context: any) => middlewares.reduceRight(
     (next: any, middleware: any) => async () => await middleware(context, next),
-    async () => {}
+    async () => { }
   )
 }
 
 type WSRouteHandler = (packet: any) => Promise<any>
-type WSRouteInfo = { namespace: string, route: string, packet: any }
-type WSRouteMiddleware = (context: WSRouteInfo, next: () => void) => Promise<void>
+type WSRouteInfo = { namespace: string, route: string, payload: any }
+type WSRouteMiddleware = (context: WSRouteInfo, next: () => Promise<void>) => Promise<void>
 
 class WS {
   private io: SocketIO.Server
@@ -45,7 +45,7 @@ class WS {
   constructor() {
     this.io = Socket(CONFIG.port.websocket)
   }
-  
+
   /**
    * 标识接下来的路由定义应跳过jwt验证
    * 
@@ -87,19 +87,21 @@ class WS {
    * @memberof WS
    */
   on(route: string, handler: WSRouteHandler): WS {
-    const nsp = this.io.of(this.namespace)
+    const namespace = this.namespace
     const skipAuth = this.skipAuth
-    const middlewareChain = chain(this.middlewares)
+
+    const nsp = this.io.of(namespace)
+    const middlewareChain = chain<WSRouteInfo>(this.middlewares)
 
     nsp.on('connection', socket => socket.on(route, async (packet, cb) => {
       const { token, payload } = packet
 
-      if (skipAuth && !jwtVerify(token)) {
+      if (!skipAuth && !jwtVerify(token)) {
         return cb(Response.err('Authentication failed'))
       }
 
       try {
-        await middlewareChain(payload)()
+        await middlewareChain({ namespace, route, payload })()
         cb(Response.ok(await handler(payload)))
       } catch (error) {
         cb(Response.err(error.message))

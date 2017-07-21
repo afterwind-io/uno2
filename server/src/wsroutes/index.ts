@@ -4,14 +4,22 @@ import User from '../model/user'
 import ws from '../util/websocket'
 import Response from '../util/response'
 
-ws.use(async ({ namespace, route, packet }, next) => {
-  console.log(`[ws] Incoming: ${namespace}/${route} -- ${packet}`)
+ws.use(async ({ namespace, route, payload }, next) => {
+  console.log(`[ws] Incoming: ${namespace}/${route} -- "${payload}"`)
+  // throw new Error(`${namespace} is under construction.`)
+  await next()
+  console.log("I'm back")
+})
+
+ws.use(async ({ namespace }, next) => {
+  console.log(`namespace: ${namespace}`);
+  // throw new Error(`${namespace} is under construction.`)
   await next()
 })
 
 ws.of('/api')
 
-ws.on('Knock Knock', async packet => {
+ws.public.on('Knock Knock', async packet => {
   return "Who's there?"
 })
 
