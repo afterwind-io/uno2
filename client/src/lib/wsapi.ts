@@ -35,8 +35,8 @@ class WSAPI {
     return new Promise((resolve, reject) => {
       this.queue.add(api)
 
-      let packet = { token: this.token, payload }
-      this.ws.emit(api, packet, (data: WSAPIResponse<T>) => {
+      let packet = { token: this.token, route: api, payload }
+      this.ws.emit('request', packet, (data: WSAPIResponse<T>) => {
         this.queue.delete(api)
 
         console.log(data)

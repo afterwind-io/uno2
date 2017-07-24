@@ -4,17 +4,21 @@ import User from '../model/user'
 import ws from '../util/websocket'
 import Response from '../util/response'
 
-ws.use(async ({ namespace, route, payload }, next) => {
-  console.log(`[ws] Incoming: ${namespace}/${route} -- "${payload}"`)
-  // throw new Error(`${namespace} is under construction.`)
+ws.use(async (context, next) => {
+  const { namespace, route, payload } = context
+  console.log(`[ws] <= ${namespace}/${route} -- "${JSON.stringify(payload)}"`)
+
   await next()
-  console.log("I'm back")
+
+  const { response } = context
+  console.log(`[ws] => ${namespace}/${route} -- "${JSON.stringify(response)}"`)
 })
 
-ws.use(async ({ namespace }, next) => {
-  console.log(`namespace: ${namespace}`);
-  // throw new Error(`${namespace} is under construction.`)
-  await next()
+ws.use(async (context, next) => {
+  const { namespace, route, payload } = context
+  throw new Error(`${namespace} is under construction.`)
+  // console.log('[ws] Such Doge Much Wow.')
+  // await next()
 })
 
 ws.of('/api')
@@ -35,4 +39,8 @@ ws.public.on('user/login', async packet => {
   }, CONFIG.secret)
 
   return { token, user }
+})
+
+ws.otherwise(async packet => {
+  throw new Error('You shall not pass.')
 })
