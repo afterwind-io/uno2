@@ -1,43 +1,25 @@
 import * as Socket from 'socket.io'
-import * as JWT from 'jsonwebtoken'
 import * as CONFIG from '../config'
-import Response from './response'
 
-/**
- * JWT验证
- * 
- * @param {string} token JWT字符串
- * @returns {boolean} 验证结果
- */
-function jwtVerify(token: string): boolean {
-  try {
-    var decoded = JWT.verify(token, CONFIG.secret);
-    return true
-  } catch (err) {
-    return false
-  }
-}
-
-function hasHandler(eventEmitter: NodeJS.EventEmitter, name: string): boolean {
-  return eventEmitter.eventNames().indexOf(name) !== -1
-}
-
-enum WSRouteAccessibility {
-  private = 'private',
-  public = 'public'
-}
-
-type WSRouteHandler = (packet: any) => Promise<any>
-type WSRouteHandlerEntry = {
-  handler: WSRouteHandler,
-  accessibility: WSRouteAccessibility
-}
+type WSRouteHandler = (param: any) => Promise<any>
 type WSRouteMiddleware = (context: WSRouteInfo, next: () => Promise<void>) => Promise<void>
 type WSRouteInfo = {
   namespace: string,
   route: string,
   payload: any,
-  response: Response<any>
+  response: any
+}
+
+async function noop() { }
+
+async function step(handlers: WSRouteMiddleware[], context: WSRouteInfo, pointer: number = 0) {
+  if (pointer === handlers.length) return
+
+  const next = async function () {
+    await step(handlers, context, pointer + 1)
+  }
+
+  return await handlers[pointer](context, next)
 }
 
 const REQUEST_EVENT: string = 'request'
@@ -46,24 +28,12 @@ const FALLBACK_NAME: string = '__fallback__'
 class WS {
   private io: SocketIO.Server
   private middlewares: WSRouteMiddleware[] = []
-  private handlerMap: Map<string, WSRouteHandlerEntry> = new Map()
+  private handlerMap: Map<string, WSRouteMiddleware> = new Map()
   private namespace: string = '/'
-  private accessibility: WSRouteAccessibility = WSRouteAccessibility.private
 
   constructor() {
     this.io = Socket(CONFIG.port.websocket)
-    this.of(this.namespace)
-  }
-
-  /**
-   * 标识接下来的路由定义应跳过jwt验证
-   * 
-   * @readonly
-   * @type {WS}
-   * @memberof WS
-   */
-  get public(): WS {
-    return (this.accessibility = WSRouteAccessibility.public, this)
+    this.initNamespace()
   }
 
   /**
@@ -73,7 +43,7 @@ class WS {
    * @memberof WS
    */
   use(middleware: WSRouteMiddleware) {
-    this.middlewares.push(middleware)
+    return (this.middlewares.push(middleware), this)
   }
 
   /**
@@ -86,8 +56,7 @@ class WS {
   of(namespace: string): WS {
     this.namespace = namespace
 
-    const nsp = this.io.of(namespace)
-    if (!hasHandler(nsp, 'connection')) {
+    if (!this.hasInit(namespace)) {
       this.initNamespace()
     }
 
@@ -102,42 +71,37 @@ class WS {
    * @returns {WS} 当前的ws对象
    * @memberof WS
    */
-  on(route: string, handler: WSRouteHandler, accessibility?: WSRouteAccessibility): WS {
-    this.handlerMap.set(route, {
-      handler,
-      accessibility: this.accessibility
-    })
-
-    this.accessibility = WSRouteAccessibility.private
-
-    return this
+  on(route: string, handler: WSRouteHandler): WS {
+    return (this.handlerMap.set(route, this.wrapHandler(handler)), this)
   }
 
   otherwise(handler: WSRouteHandler): WS {
     return this.on(FALLBACK_NAME, handler)
   }
 
+  private hasInit(namespace: string): boolean {
+    const nsp = this.io.of(namespace)
+    return nsp.eventNames().includes('connection')
+  }
+
+  private getHandler(route: string = FALLBACK_NAME): WSRouteMiddleware {
+    let handlerName = this.handlerMap.has(route) ? route : FALLBACK_NAME
+    return this.handlerMap.get(handlerName) || noop
+  }
+
+  private wrapHandler(handler: WSRouteHandler): WSRouteMiddleware {
+    return async function handlerWrapper({ payload }, next) {
+      await handler(payload.param)
+    }
+  }
+
   private initNamespace() {
     const namespace = this.namespace
     const nsp = this.io.of(this.namespace)
 
-    nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (packet, cb) => {
-      const { token, route, payload } = packet
-      const handler = this.handlerMap.get(this.handlerMap.has(route) ? route : FALLBACK_NAME)
-      const accessibility = handler !== void 0 ? handler.accessibility : WSRouteAccessibility.private
-
-      if (accessibility === WSRouteAccessibility.private && !jwtVerify(token)) {
-        return cb(Response.err('Authentication failed'))
-      }
-
-      const wrapper: WSRouteMiddleware = async function handlerWrapper(info, next) {
-        try {
-          info.response = Response.ok(await handler.handler(payload))
-        } catch (error) {
-          info.response = Response.err(error.message)
-        }
-      }
-
+    nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (payload, cb) => {
+      const { route } = payload
+      const wrapper = this.getHandler(route)
       const handlerArr = [...this.middlewares, wrapper]
 
       try {
@@ -146,20 +110,10 @@ class WS {
 
         cb(context.response)
       } catch (error) {
-        cb(Response.err(error.message))
+        cb(error.message)
       }
     }))
   }
-}
-
-async function step(handlers: WSRouteMiddleware[], context: WSRouteInfo, pointer: number = 0) {
-  if (pointer === handlers.length) return
-
-  const next = async function () {
-    await step(handlers, context, pointer + 1)
-  }
-
-  return await handlers[pointer](context, next)
 }
 
 export default new WS()

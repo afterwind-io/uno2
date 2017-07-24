@@ -29,13 +29,13 @@ class WSAPI {
     this.token = token
   }
 
-  public send<T>(api: string, payload: any = ''): Promise<T> {
+  public send<T>(api: string, param: any = ''): Promise<T> {
     if (this.queue.has(api)) throw new WSAPIError()
 
     return new Promise((resolve, reject) => {
       this.queue.add(api)
 
-      let packet = { token: this.token, route: api, payload }
+      let packet = { token: this.token, route: api, param }
       this.ws.emit('request', packet, (data: WSAPIResponse<T>) => {
         this.queue.delete(api)
 
