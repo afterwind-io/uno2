@@ -1,58 +1,19 @@
 import * as JWT from 'jsonwebtoken'
 import * as CONFIG from '../config'
 import User from '../model/user'
-import ws from '../util/websocket'
-import Response from '../util/response'
+import WSRouter from '../lib/wsrouter'
+import logger from '../lib/wsrouter.logger'
+import resWrapper from '../lib/wsrouter.response'
+import jwtVerify from '../lib/wsrouter.jwt'
 
-ws.use(async (context, next) => {
-  const { namespace, route, payload } = context
-  console.log(`[ws] <= ${namespace}/${route} -- "${JSON.stringify(payload)}"`)
+const ws = new WSRouter(CONFIG.port.websocket)
 
-  await next()
-
-  const { response } = context
-  console.log(`[ws] => ${namespace}/${route} -- "${JSON.stringify(response)}"`)
-})
-
-ws.use(async (context, next) => {
-  try {
-    await next()
-
-    if (context.response.constructor !== Response) {
-      context.response = Response.ok(context.response)
-    }
-  } catch (error) {
-    context.response = Response.err(error.message)
-    console.error(error)
-  }
-})
-
-ws.use(async (context, next) => {
-  // /**
-  //  * JWT验证
-  //  * 
-  //  * @param {string} token JWT字符串
-  //  * @returns {boolean} 验证结果
-  //  */
-  // function jwtVerify(token: string): boolean {
-  //   try {
-  //     var decoded = JWT.verify(token, CONFIG.secret);
-  //     return true
-  //   } catch (err) {
-  //     return false
-  //   }
-  // }
-
-  // if (accessibility === WSRouteAccessibility.private && !jwtVerify(token)) {
-  //       return cb(Response.err('Authentication failed'))
-  //     }
-})
-
-ws.use(async (context, next) => {
-  const { namespace, route, payload } = context
-  // throw new Error(`${namespace} is under construction.`)
-  await next()
-})
+ws.use(logger)
+ws.use(resWrapper)
+ws.use(jwtVerify({
+  secret: CONFIG.secret,
+  excludes: ['user/register', 'user/login']
+}))
 
 ws.of('/api')
 

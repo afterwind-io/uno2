@@ -1,13 +1,27 @@
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "target": "es2017",
-        "noImplicitAny": false,
-        "sourceMap": true,
-        "baseUrl": "src",
-        "outDir": "./build"
-    },
-    "include": [
-        "./src/**/*"
-    ]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2017",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "baseUrl": "./src",
+    "outDir": "./build",
+    "paths": {
+      "~/*": [
+        "./*"
+      ],
+      "model/*": [
+        "./model/*"
+      ],
+      "util/*": [
+        "./util/*"
+      ],
+      "lib/*": [
+        "./lib/*"
+      ]
+    }
+  },
+  "include": [
+    "./src/**/*"
+  ]
 }

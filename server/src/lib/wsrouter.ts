@@ -1,14 +1,5 @@
 import * as Socket from 'socket.io'
-import * as CONFIG from '../config'
-
-type WSRouteHandler = (param: any) => Promise<any>
-type WSRouteMiddleware = (context: WSRouteInfo, next: () => Promise<void>) => Promise<void>
-type WSRouteInfo = {
-  namespace: string,
-  route: string,
-  payload: any,
-  response: any
-}
+import { WSRouteHandler, WSRouteMiddleware, WSRouteInfo } from './wsrouter.type'
 
 async function noop() { }
 
@@ -26,13 +17,13 @@ const REQUEST_EVENT: string = 'request'
 const FALLBACK_NAME: string = '__fallback__'
 
 class WS {
-  private io: SocketIO.Server
+  public server: SocketIO.Server
   private middlewares: WSRouteMiddleware[] = []
   private handlerMap: Map<string, WSRouteMiddleware> = new Map()
   private namespace: string = '/'
 
-  constructor() {
-    this.io = Socket(CONFIG.port.websocket)
+  constructor(...options: any[]) {
+    this.server = Socket(options)
     this.initNamespace()
   }
 
@@ -80,7 +71,7 @@ class WS {
   }
 
   private hasInit(namespace: string): boolean {
-    const nsp = this.io.of(namespace)
+    const nsp = this.server.of(namespace)
     return nsp.eventNames().includes('connection')
   }
 
@@ -97,7 +88,7 @@ class WS {
 
   private initNamespace() {
     const namespace = this.namespace
-    const nsp = this.io.of(this.namespace)
+    const nsp = this.server.of(this.namespace)
 
     nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (payload, cb) => {
       const { route } = payload
@@ -116,4 +107,4 @@ class WS {
   }
 }
 
-export default new WS()
+export default WS
