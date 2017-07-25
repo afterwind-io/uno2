@@ -8,8 +8,8 @@ ws.on('Knock Knock', async packet => {
 })
 
 ws.on('user/register', userCtrl.register)
-ws.on('user/login', userCtrl.login)
 
+ws.on('user/login', userCtrl.login)
 
 ws.otherwise(async packet => {
   throw new Error('You shall not pass.')

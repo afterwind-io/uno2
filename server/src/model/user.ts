@@ -1,14 +1,13 @@
 import * as CONFIG from '../config'
 import * as Crypto from 'crypto'
-import { idGen } from '../util/common'
 import ConnectRedis from '../util/redis'
 import JSONify from '../util/jsonify'
 
 const redis = ConnectRedis(CONFIG.redis.user)
 
 interface UserDetails {
-  uid?: string
-  name: string
+  uid: string
+  name?: string
   password: string
 }
 
@@ -43,25 +42,6 @@ class User extends JSONify {
    */
   public password: string
 
-  static async login({ name, password }: { name: string, password: string }): Promise<User> {
-    let user = await User.fetch(name)
-
-    if (user !== void 0 && password === user.password) {
-      return user
-    } else {
-      throw new Error('用户名或密码错误')
-    }
-  }
-
-  static async register(ctx: { name: string, password: string }): Promise<User> {
-    let test = await User.fetch(ctx.name)
-    if (test !== void 0) throw new Error('该用户名已被注册')
-
-    let user = new User(ctx)
-    await user.save()
-    return user
-  }
-
   static async fetch(name: string): Promise<User> {
     let detail = await redis.get(User.getRedisKey(name))
     return detail == null ? void 0 : User.parse(detail)
@@ -70,7 +50,7 @@ class User extends JSONify {
   static getRedisKey(name: string): string {
     const hash = Crypto.createHash('sha256');
 
-    hash.update(`user:${name}`)
+    hash.update(name)
     return `user:${hash.digest('hex')}`
   }
 
@@ -82,8 +62,8 @@ class User extends JSONify {
   constructor(details: UserDetails) {
     super()
 
-    this.uid = details.uid || idGen()
-    this.name = details.name
+    this.uid = details.uid
+    this.name = details.name || details.uid
     this.password = details.password
   }
 
