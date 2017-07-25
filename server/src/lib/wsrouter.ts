@@ -1,9 +1,21 @@
 import * as Socket from 'socket.io'
-import { WSRouteHandler, WSRouteMiddleware, WSRouteInfo } from './wsrouter.type'
+import { WSRouteHandler, WSRouteHandlerMap, WSRouteMiddleware, WSRouteInfo } from './wsrouter.type'
 
+/**
+ * _(:з」∠)_
+ * 
+ */
 async function noop() { }
 
-async function step(handlers: WSRouteMiddleware[], context: WSRouteInfo, pointer: number = 0) {
+/**
+ * 中间件递归执行器
+ * 
+ * @param {WSRouteMiddleware[]} handlers 中间件组
+ * @param {WSRouteInfo} context 在中间件中传递的数据上下文
+ * @param {number} [pointer=0] 当前执行的中间件索引指针
+ * @returns {Promise<void>} 
+ */
+async function step(handlers: WSRouteMiddleware[], context: WSRouteInfo, pointer: number = 0): Promise<void> {
   if (pointer === handlers.length) return
 
   const next = async function () {
@@ -16,19 +28,19 @@ async function step(handlers: WSRouteMiddleware[], context: WSRouteInfo, pointer
 const REQUEST_EVENT: string = 'request'
 const FALLBACK_NAME: string = '__fallback__'
 
-class WS {
+class WSRouter {
   public server: SocketIO.Server
   private middlewares: WSRouteMiddleware[] = []
-  private handlerMap: Map<string, WSRouteMiddleware> = new Map()
+  private handlerMap: WSRouteHandlerMap = new Map()
   private namespace: string = '/'
 
   constructor(...options: any[]) {
-    this.server = Socket(options)
-    this.initNamespace()
+    this.server = Socket(...options)
+    this.of(this.namespace)
   }
 
   /**
-   * 增加路由中间件
+   * 添加中间件
    * 
    * @param {WSRouteMiddleware} middleware 中间件定义
    * @memberof WS
@@ -44,12 +56,11 @@ class WS {
    * @returns {WS} 当前的ws对象
    * @memberof WS
    */
-  of(namespace: string): WS {
+  of(namespace: string): WSRouter {
     this.namespace = namespace
+    this.handlerMap.set(namespace, new Map())
 
-    if (!this.hasInit(namespace)) {
-      this.initNamespace()
-    }
+    !this.hasInit(namespace) && this.initNamespace()
 
     return this
   }
@@ -59,14 +70,24 @@ class WS {
    * 
    * @param {string} route 路由名称
    * @param {WSRouteHandler} handler 路由处理方法
-   * @returns {WS} 当前的ws对象
+   * @returns {WSRouter} 当前的ws对象
    * @memberof WS
    */
-  on(route: string, handler: WSRouteHandler): WS {
-    return (this.handlerMap.set(route, this.wrapHandler(handler)), this)
+  on(route: string, handler: WSRouteHandler): WSRouter {
+    let nsp = this.handlerMap.get(this.namespace)
+    nsp.set(route, this.wrapHandler(handler))
+
+    return this
   }
 
-  otherwise(handler: WSRouteHandler): WS {
+  /**
+   * 定义无匹配路由时的默认处理方法
+   * 
+   * @param {WSRouteHandler} handler 
+   * @returns {WSRouter} 
+   * @memberof WS
+   */
+  otherwise(handler: WSRouteHandler): WSRouter {
     return this.on(FALLBACK_NAME, handler)
   }
 
@@ -75,9 +96,11 @@ class WS {
     return nsp.eventNames().includes('connection')
   }
 
-  private getHandler(route: string = FALLBACK_NAME): WSRouteMiddleware {
-    let handlerName = this.handlerMap.has(route) ? route : FALLBACK_NAME
-    return this.handlerMap.get(handlerName) || noop
+  private getHandler(namespace: string, route: string = FALLBACK_NAME): WSRouteMiddleware {
+    let nsp = this.handlerMap.get(namespace)
+    let handlerName = nsp.has(route) ? route : FALLBACK_NAME
+
+    return nsp.get(handlerName) || noop
   }
 
   private wrapHandler(handler: WSRouteHandler): WSRouteMiddleware {
@@ -88,11 +111,11 @@ class WS {
 
   private initNamespace() {
     const namespace = this.namespace
-    const nsp = this.server.of(this.namespace)
 
+    const nsp = this.server.of(namespace)
     nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (payload, cb) => {
       const { route } = payload
-      const wrapper = this.getHandler(route)
+      const wrapper = this.getHandler(namespace, route)
       const handlerArr = [...this.middlewares, wrapper]
 
       try {
@@ -107,4 +130,4 @@ class WS {
   }
 }
 
-export default WS
+export default WSRouter
