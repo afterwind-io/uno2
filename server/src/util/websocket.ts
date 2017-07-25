@@ -90,8 +90,8 @@ class WS {
   }
 
   private wrapHandler(handler: WSRouteHandler): WSRouteMiddleware {
-    return async function handlerWrapper({ payload }, next) {
-      await handler(payload.param)
+    return async function handlerWrapper(context, next) {
+      context.response = await handler(context.payload.param)
     }
   }
 
