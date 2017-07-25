@@ -34,7 +34,7 @@ function jwt(options: JWTOptions): WSRouteMiddleware {
   const middleware: WSRouteMiddleware = async (context, next) => {
     let { route, payload: { token } } = context
 
-    if (needVerify(route, includes, excludes) && !jwtVerify(token)) {
+    if (needVerify(route, includes, excludes) && !jwtVerify(token, secret)) {
       throw new Error('Authentication failed')
     }
 
