@@ -1,4 +1,3 @@
-import * as Socket from 'socket.io'
 import { WSRouteHandler, WSRouteHandlerMap, WSRouteMiddleware, WSRouteInfo } from './wsrouter.type'
 
 /**
@@ -29,13 +28,13 @@ const REQUEST_EVENT: string = 'request'
 const FALLBACK_NAME: string = '__fallback__'
 
 class WSRouter {
-  public server: SocketIO.Server
+  private server: SocketIO.Server
   private middlewares: WSRouteMiddleware[] = []
   private handlerMap: WSRouteHandlerMap = new Map()
   private namespace: string = '/'
 
-  constructor(...options: any[]) {
-    this.server = Socket(...options)
+  constructor(io: SocketIO.Server) {
+    this.server = io
     this.of(this.namespace)
   }
 
