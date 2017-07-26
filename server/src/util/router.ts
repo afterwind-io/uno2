@@ -1,16 +1,17 @@
 import * as CONFIG from '../config'
+import websocket from './websocket'
 import WSRouter from '../lib/wsrouter'
 import logger from '../lib/wsrouter.logger'
 import resWrapper from '../lib/wsrouter.response'
 import jwtVerify from '../lib/wsrouter.jwt'
 
-const ws = new WSRouter(CONFIG.port.websocket)
+const wsrouter = new WSRouter(websocket)
 
-ws.use(logger)
-ws.use(resWrapper)
-ws.use(jwtVerify({
+wsrouter.use(logger)
+wsrouter.use(resWrapper)
+wsrouter.use(jwtVerify({
   secret: CONFIG.secret,
   excludes: ['user/register', 'user/login']
 }))
 
-export default ws
+export default wsrouter

@@ -3,7 +3,7 @@ import * as CONFIG from '../config'
 import User from '../model/user'
 
 export async function register(userInfo) {
-  const test = await User.fetch(userInfo.name)
+  const test = await User.fetch(userInfo.uid)
   if (test !== void 0) throw new Error('该用户名已被注册')
 
   const user = new User(userInfo)
@@ -11,9 +11,9 @@ export async function register(userInfo) {
 }
 
 export async function login(userInfo) {
-  const user = await User.fetch(name)
+  const user = await User.fetch(userInfo.uid)
 
-  if (user === void 0 || userInfo.password === user.password) {
+  if (user === void 0 || userInfo.password !== user.password) {
     throw new Error('用户名或密码错误')
   }
 

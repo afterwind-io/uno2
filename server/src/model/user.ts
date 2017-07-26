@@ -42,15 +42,15 @@ class User extends JSONify {
    */
   public password: string
 
-  static async fetch(name: string): Promise<User> {
-    let detail = await redis.get(User.getRedisKey(name))
+  static async fetch(uid: string = ''): Promise<User> {
+    let detail = await redis.get(User.getRedisKey(uid))
     return detail == null ? void 0 : User.parse(detail)
   }
 
-  static getRedisKey(name: string): string {
+  static getRedisKey(uid: string = ''): string {
     const hash = Crypto.createHash('sha256');
 
-    hash.update(name)
+    hash.update(uid)
     return `user:${hash.digest('hex')}`
   }
 

@@ -14,7 +14,7 @@ const resWrapper: WSRouteMiddleware = async (context, next) => {
     }
   } catch (error) {
     context.response = Response.err(error.message)
-    // console.error(error)
+    console.error(error)
   }
 }
 
