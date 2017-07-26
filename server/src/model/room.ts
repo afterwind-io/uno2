@@ -94,14 +94,39 @@ export class Room extends JSONify {
    */
   public status: RoomStatus
 
+  static async init() {
+    await redis.set(REDIS_ROOM_GEN, 0)
+    await redis.set(LOBBY_ID, (new Room({ uid: LOBBY_ID, name: LOBBY_NAME })).toJson())
+  }
+
   static async create(detail: RoomDetails): Promise<Room> {
     let uid = await redis.incr(REDIS_ROOM_GEN)
-    return await new Room({ ...detail, uid })
+
+    let room = new Room({ ...detail, uid })
+    await room.inqueue()
+    await room.save()
+
+    return room
+  }
+
+  static async remove(roomId: number): Promise<Room> {
+    let room = await Room.fetch(roomId)
+    await room.dequeue()
+    await room.destory()
+
+    return room
   }
 
   static async fetch(uid: number): Promise<Room> {
     let detail = redis.get(Room.getRedisKey(uid))
     return detail == null ? void 0 : Room.parse(detail)
+  }
+
+  static async fetchRange(start: number = 0, end: number = -1): Promise<Room[]> {
+    let uids = await redis.lrange(REDIS_ROOM_INDEX, start, end)
+    let details: string[] = await redis.mget(uids)
+
+    return details.map(detail => Room.parse(detail))
   }
 
   static getRedisKey(uid: number): string {
@@ -126,12 +151,16 @@ export class Room extends JSONify {
     this.status = detail.status || RoomStatus.idle
   }
 
+  get playerCount() {
+    return this.players.length
+  }
+
   async inqueue() {
     return redis.lpush(REDIS_ROOM_INDEX, this.uid)
   }
 
   async dequeue() {
-    return redis.lrem(REDIS_ROOM_INDEX, 1, this.uid)
+    return redis.lrem(REDIS_ROOM_INDEX, 0, this.uid)
   }
 
   async save() {
@@ -143,7 +172,20 @@ export class Room extends JSONify {
     return redis.del(Room.getRedisKey(this.uid))
   }
 
+  async destoryIfEmpty(): Promise<void> {
+    if (this.playerCount === 0) {
+      await this.dequeue()
+      await this.destory()
+    }
+
+    return
+  }
+
   addPlayer(uid: string) {
+    if (this.playerCount === this.limit) {
+      throw new Error('该房间人数已满')
+    }
+
     this.players.push(uid)
   }
 
@@ -152,7 +194,3 @@ export class Room extends JSONify {
     this.players.splice(index, 1)
   }
 }
-
-redis.set(REDIS_ROOM_GEN, -1)
-redis.del(REDIS_ROOM_INDEX)
-redis.set(LOBBY_ID, (new Room({ uid: LOBBY_ID, name: LOBBY_NAME })).toJson())

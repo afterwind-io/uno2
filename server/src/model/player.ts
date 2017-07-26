@@ -57,13 +57,36 @@ export class Player extends JSONify {
    */
   public roomId: number
 
+  static getRedisKey(uid: string): string {
+    return `player:${uid}`
+  }
+
   static async fetch(uid: string): Promise<Player> {
     let detail = await redis.get(Player.getRedisKey(uid))
     return detail == null ? void 0 : Player.parse(detail)
   }
 
-  static getRedisKey(uid: string): string {
-    return `player:${uid}`
+  static async fetchRange(start: number = 0, end: number = -1): Promise<Player[]> {
+    let uids = await redis.lrange(REDIS_PLAYER_INDEX, start, end)
+    let details: string[] = await redis.mget(Player.getRedisKey(uids))
+
+    return details.map(detail => Player.parse(detail))
+  }
+
+  static async create(detail: PlayerDetails): Promise<Player> {
+    let player = new Player(detail)
+    await player.inqueue()
+    await player.save()
+
+    return player
+  }
+
+  static async remove(uid: string): Promise<Player> {
+    let player = await Player.fetch(uid)
+    await player.dequeue()
+    await player.destory()
+
+    return player
   }
 
   static parse(json: string): Player {
@@ -81,18 +104,32 @@ export class Player extends JSONify {
   }
 
   async inqueue() {
-    return redis.sadd(REDIS_PLAYER_INDEX, this.uid)
+    return await redis.lpush(REDIS_PLAYER_INDEX, this.uid)
   }
 
   async dequeue() {
-    return redis.srem(REDIS_PLAYER_INDEX, this.uid)
+    return await redis.lrem(REDIS_PLAYER_INDEX, 0, this.uid)
   }
 
   async save() {
-    return redis.set(Player.getRedisKey(this.uid), this.toJson())
+    return await redis.set(Player.getRedisKey(this.uid), this.toJson())
   }
 
   async destory() {
-    return redis.del(Player.getRedisKey(this.uid))
+    return await redis.del(Player.getRedisKey(this.uid))
+  }
+
+  changeRoom(uid: string, roomId: number): number {
+    if (roomId === this.roomId) {
+      throw new Error('您已经加入了该房间')
+    }
+
+    if (this.status !== PlayerStatus.idle) {
+      throw new Error('当前状态无法切换房间')
+    }
+
+    let oldRoomId = this.roomId
+    this.roomId = roomId
+    return oldRoomId
   }
 }
