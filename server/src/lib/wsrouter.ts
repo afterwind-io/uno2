@@ -104,7 +104,7 @@ class WSRouter {
 
   private wrapHandler(handler: WSRouteHandler): WSRouteMiddleware {
     return async function handlerWrapper(context, next) {
-      context.response = await handler(context.payload.param)
+      context.response = await handler(context.payload.param || {})
     }
   }
 
@@ -112,7 +112,7 @@ class WSRouter {
     const namespace = this.namespace
 
     const nsp = this.server.of(namespace)
-    nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (payload, cb) => {
+    nsp.on('connection', socket => socket.on(REQUEST_EVENT, async (payload = {}, cb) => {
       const { route } = payload
       const wrapper = this.getHandler(namespace, route)
       const handlerArr = [...this.middlewares, wrapper]
