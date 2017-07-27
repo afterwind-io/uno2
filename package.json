@@ -17,6 +17,7 @@
     "koa-router": "*",
     "socket.io": "*",
     "socket.io-client": "*",
+    "tslib": "^1.7.1",
     "typescript": "*",
     "vue": "*",
     "vue-router": "*",
