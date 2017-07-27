@@ -68,7 +68,8 @@ export class Player extends JSONify {
 
   static async fetchRange(start: number = 0, end: number = -1): Promise<Player[]> {
     let uids = await redis.lrange(REDIS_PLAYER_INDEX, start, end)
-    let details: string[] = await redis.mget(Player.getRedisKey(uids))
+    let keys = uids.map(uid => Player.getRedisKey(uid))
+    let details: string[] = await redis.mget(...keys)
 
     return details.map(detail => Player.parse(detail))
   }

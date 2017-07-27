@@ -8,6 +8,7 @@ const REDIS_ROOM_INDEX = 'room-index'
 
 const LOBBY_ID = 0
 const LOBBY_NAME = 'Lobby'
+const LOBBY_MIN_PLAYER = 0
 const LOBBY_MAX_PLAYER = 1000
 
 const ROOM_MIN_PLAYER = 2
@@ -23,8 +24,9 @@ export interface RoomDetails {
   name?: string,
   onwer?: string,
   players?: string[],
-  limit?: number,
-  isPublic?: boolean,
+  minPlayers?: number,
+  maxPlayers?: number,
+  isPrivate?: boolean,
   password?: string,
   status?: RoomStatus
 }
@@ -63,12 +65,20 @@ export class Room extends JSONify {
   public players: string[]
 
   /**
-   * 房间人数限制
+   * 房间最小人数限制
    * 
    * @type {number}
    * @memberof Room
    */
-  public limit: number
+  public minPlayers: number
+
+  /**
+   * 房间最大人数限制
+   * 
+   * @type {number}
+   * @memberof Room
+   */
+  public maxPlayers: number
 
   /**
    * 指示房间是否公开
@@ -76,7 +86,7 @@ export class Room extends JSONify {
    * @type {boolean}
    * @memberof Room
    */
-  public isPublic: boolean
+  public isPrivate: boolean
 
   /**
    * 房间密码
@@ -96,7 +106,14 @@ export class Room extends JSONify {
 
   static async init() {
     await redis.set(REDIS_ROOM_GEN, 0)
-    await redis.set(LOBBY_ID, (new Room({ uid: LOBBY_ID, name: LOBBY_NAME })).toJson())
+
+    let lobby = new Room({
+      uid: LOBBY_ID,
+      name: LOBBY_NAME,
+      minPlayers: LOBBY_MIN_PLAYER,
+      maxPlayers: LOBBY_MAX_PLAYER
+    })
+    await lobby.save()
   }
 
   static async create(detail: RoomDetails): Promise<Room> {
@@ -118,13 +135,14 @@ export class Room extends JSONify {
   }
 
   static async fetch(uid: number): Promise<Room> {
-    let detail = redis.get(Room.getRedisKey(uid))
+    let detail = await redis.get(Room.getRedisKey(uid))
     return detail == null ? void 0 : Room.parse(detail)
   }
 
   static async fetchRange(start: number = 0, end: number = -1): Promise<Room[]> {
     let uids = await redis.lrange(REDIS_ROOM_INDEX, start, end)
-    let details: string[] = await redis.mget(uids)
+    let keys = uids.map(uid => Room.getRedisKey(uid))
+    let details: string[] = await redis.mget(keys)
 
     return details.map(detail => Room.parse(detail))
   }
@@ -145,8 +163,9 @@ export class Room extends JSONify {
     this.name = detail.name || `Room #${detail.uid}`
     this.owner = detail.onwer || ''
     this.players = detail.players || []
-    this.limit = detail.limit || (this.uid === LOBBY_ID ? LOBBY_MAX_PLAYER : ROOM_MAX_PLAYER)
-    this.isPublic = detail.isPublic || false
+    this.minPlayers = detail.minPlayers === void 0 ? ROOM_MIN_PLAYER : detail.minPlayers
+    this.maxPlayers = detail.maxPlayers || ROOM_MAX_PLAYER
+    this.isPrivate = detail.isPrivate || false
     this.password = detail.password || ''
     this.status = detail.status || RoomStatus.idle
   }
@@ -164,7 +183,6 @@ export class Room extends JSONify {
   }
 
   async save() {
-    let index = await redis.incr(REDIS_ROOM_GEN)
     return redis.set(Room.getRedisKey(this.uid), this.toJson())
   }
 
@@ -172,17 +190,19 @@ export class Room extends JSONify {
     return redis.del(Room.getRedisKey(this.uid))
   }
 
-  async destoryIfEmpty(): Promise<void> {
-    if (this.playerCount === 0) {
+  async destoryIfEmpty(): Promise<boolean> {
+    if (this.uid !== LOBBY_ID && this.playerCount === 0) {
       await this.dequeue()
       await this.destory()
-    }
 
-    return
+      return false
+    } else {
+      return true
+    }
   }
 
   addPlayer(uid: string) {
-    if (this.playerCount === this.limit) {
+    if (this.playerCount === this.maxPlayers) {
       throw new Error('该房间人数已满')
     }
 

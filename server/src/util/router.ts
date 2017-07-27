@@ -11,7 +11,7 @@ wsrouter.use(logger)
 wsrouter.use(resWrapper)
 wsrouter.use(jwtVerify({
   secret: CONFIG.secret,
-  excludes: ['user/register', 'user/login']
+  excludes: ['Knock Knock', 'user/register', 'user/login']
 }))
 
 export default wsrouter

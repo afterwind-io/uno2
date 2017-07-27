@@ -21,6 +21,10 @@ class WSAPI {
   private ws: SocketIOClient.Socket
   private token: string = ''
 
+  get socketId(): string {
+    return this.ws.id
+  }
+
   public connect(): void {
     this.ws = io('localhost:13001/api')
   }

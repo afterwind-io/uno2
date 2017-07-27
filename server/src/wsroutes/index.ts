@@ -15,11 +15,16 @@ wsrouter.on('user/login', async packet => {
   let { token, user } = await userCtrl.login(packet)
   let player = await Player.create(user)
 
+  let lobby = await Room.fetch(0)
+  lobby.addPlayer(player.uid)
+  lobby.save()
+
   return { token, user, player }
 })
 
 wsrouter.on('user/logout', async packet => {
-  let uid = packet
+  let { uid } = packet
+
   let player = await Player.remove(uid)
 
   let room = await Room.fetch(player.roomId)
@@ -34,24 +39,37 @@ wsrouter.on('player/list', async packet => {
   return await Player.fetchRange(start, end)
 })
 
+wsrouter.on('room/create', async packet => {
+  let roomDetail = packet
+
+  let room = await Room.create(roomDetail)
+  return room
+})
+
 wsrouter.on('room/to', async packet => {
-  let { uid, roomId } = packet
+  let { uid, roomId, password } = packet
 
-  try {
-    let player = await Player.fetch(uid)
-    let oldRoomId = player.changeRoom(uid, roomId)
+  let player = await Player.fetch(uid)
 
-    let newRoom = await Room.fetch(roomId)
-    let oldRoom = await Room.fetch(oldRoomId)
+  let newRoom = await Room.fetch(roomId)
+  if (newRoom.isPrivate && newRoom.password !== password) {
+    throw new Error('房间密码不匹配')
+  } else {
     newRoom.addPlayer(uid)
-    oldRoom.removePlayer(uid)
-
-    await oldRoom.destoryIfEmpty()
-    await player.save()
-    await newRoom.save()
-  } catch (error) {
-    return error
   }
+
+  let oldRoomId = player.roomId
+  let oldRoom = await Room.fetch(oldRoomId)
+  if (oldRoom) {
+    oldRoom.removePlayer(uid)
+    await oldRoom.destoryIfEmpty() && await oldRoom.save()
+  }
+
+  player.changeRoom(uid, roomId)
+  await player.save()
+  await newRoom.save()
+
+  return 'ok'
 })
 
 wsrouter.on('room/list', async packet => {
