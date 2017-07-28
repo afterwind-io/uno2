@@ -1,6 +1,6 @@
 import wsrouter from '../util/router'
 import { Player } from '../model/player'
-import { Room } from '../model/room'
+import { Room, RoomDetails } from '../model/room'
 import * as userCtrl from '../controller/userCtrl'
 
 wsrouter.of('/api')
@@ -29,7 +29,7 @@ wsrouter.on('user/logout', async packet => {
 
   let room = await Room.fetch(player.roomId)
   room.removePlayer(uid)
-  await room.destoryIfEmpty()
+  await room.destoryIfEmpty() && await room.save()
 
   return 'ok'
 })
@@ -40,13 +40,13 @@ wsrouter.on('player/list', async packet => {
 })
 
 wsrouter.on('room/create', async packet => {
-  let roomDetail = packet
+  let roomDetail: RoomDetails = packet
 
   let room = await Room.create(roomDetail)
   return room
 })
 
-wsrouter.on('room/to', async packet => {
+wsrouter.on('room/join', async packet => {
   let { uid, roomId, password } = packet
 
   let player = await Player.fetch(uid)
@@ -58,6 +58,8 @@ wsrouter.on('room/to', async packet => {
     newRoom.addPlayer(uid)
   }
 
+  // TODO
+  // - 房主离开房间需要转移所有权
   let oldRoomId = player.roomId
   let oldRoom = await Room.fetch(oldRoomId)
   if (oldRoom) {
@@ -70,6 +72,21 @@ wsrouter.on('room/to', async packet => {
   await newRoom.save()
 
   return 'ok'
+})
+
+// wsrouter.on('room/update', async packet => {
+//   let { roomId, detail = {} }: {} = packet
+//   let { name, maxPlayers, isPrivate, password, status } = detail
+
+//   let room = await Room.fetch(room)
+// })
+
+wsrouter.on('room/transfer', async packet => {
+  let { roomId, ownerId } = packet
+
+  let room = await Room.fetch(roomId)
+  room.owner = ownerId
+  await room.save()
 })
 
 wsrouter.on('room/list', async packet => {

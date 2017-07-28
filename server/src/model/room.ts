@@ -3,10 +3,10 @@ import ConnectRedis from '../util/redis'
 import JSONify from '../util/jsonify'
 
 const redis = ConnectRedis(CONFIG.redis.cache)
-const REDIS_ROOM_GEN = 'roomIdGen'
-const REDIS_ROOM_INDEX = 'room-index'
+export const REDIS_ROOM_GEN = 'roomIdGen'
+export const REDIS_ROOM_INDEX = 'room-index'
 
-const LOBBY_ID = 0
+export const LOBBY_ID = 0
 const LOBBY_NAME = 'Lobby'
 const LOBBY_MIN_PLAYER = 0
 const LOBBY_MAX_PLAYER = 1000
@@ -22,7 +22,7 @@ export enum RoomStatus {
 export interface RoomDetails {
   uid: number,
   name?: string,
-  onwer?: string,
+  owner?: string,
   players?: string[],
   minPlayers?: number,
   maxPlayers?: number,
@@ -134,7 +134,7 @@ export class Room extends JSONify {
     return room
   }
 
-  static async fetch(uid: number): Promise<Room> {
+  static async fetch(uid: number | string): Promise<Room> {
     let detail = await redis.get(Room.getRedisKey(uid))
     return detail == null ? void 0 : Room.parse(detail)
   }
@@ -147,7 +147,7 @@ export class Room extends JSONify {
     return details.map(detail => Room.parse(detail))
   }
 
-  static getRedisKey(uid: number): string {
+  static getRedisKey(uid: number | string): string {
     return `room:${uid}`
   }
 
@@ -161,7 +161,7 @@ export class Room extends JSONify {
 
     this.uid = detail.uid
     this.name = detail.name || `Room #${detail.uid}`
-    this.owner = detail.onwer || ''
+    this.owner = detail.owner || ''
     this.players = detail.players || []
     this.minPlayers = detail.minPlayers === void 0 ? ROOM_MIN_PLAYER : detail.minPlayers
     this.maxPlayers = detail.maxPlayers || ROOM_MAX_PLAYER

@@ -3,7 +3,7 @@ import * as CONFIG from '../config'
 import ConnectRedis from '../util/redis'
 import JSONify from '../util/jsonify'
 
-const redis = ConnectRedis(CONFIG.redis.user)
+const redis = ConnectRedis(CONFIG.redis.db)
 
 interface UserDetails {
   uid: string

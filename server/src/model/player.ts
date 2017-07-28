@@ -3,7 +3,8 @@ import ConnectRedis from '../util/redis'
 import JSONify from '../util/jsonify'
 
 const redis = ConnectRedis(CONFIG.redis.cache)
-const REDIS_PLAYER_INDEX = 'player-index'
+
+export const REDIS_PLAYER_INDEX = 'player-index'
 
 export enum PlayerStatus {
   idle = 'idle',

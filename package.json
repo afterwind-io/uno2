@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "export NODE_ENV=test&& mocha ./test/server.js"
   },
   "author": "",
   "license": "ISC",
@@ -18,7 +18,7 @@
     "socket.io": "*",
     "socket.io-client": "*",
     "tslib": "^1.7.1",
-    "typescript": "*",
+    "typescript": "^2.4.1",
     "vue": "*",
     "vue-router": "*",
     "vuex": "*",
@@ -40,6 +40,7 @@
     "babel-preset-stage-1": "*",
     "babel-preset-stage-2": "*",
     "babel-preset-stage-3": "*",
+    "chai": "^4.1.0",
     "css-loader": "*",
     "eslint": "*",
     "eslint-config-standard": "*",
@@ -48,6 +49,7 @@
     "extract-text-webpack-plugin": "*",
     "file-loader": "*",
     "html-webpack-plugin": "*",
+    "mocha": "^3.4.2",
     "node-sass": "*",
     "sass-loader": "*",
     "style-loader": "*",
