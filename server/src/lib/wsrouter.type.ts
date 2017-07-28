@@ -6,4 +6,4 @@ export type WSRouteInfo = {
 }
 export type WSRouteMiddleware = (context: WSRouteInfo, next: () => Promise<void>) => Promise<void>
 export type WSRouteHandler = (param: any) => Promise<any>
-export type WSRouteHandlerMap = Map<string, Map<string, WSRouteMiddleware>>
+export type WSRouteHandlerMap = { [nsp: string]: { [route: string]: WSRouteMiddleware } }

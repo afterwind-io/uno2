@@ -30,7 +30,7 @@ const FALLBACK_NAME: string = '__fallback__'
 class WSRouter {
   private server: SocketIO.Server
   private middlewares: WSRouteMiddleware[] = []
-  private handlerMap: WSRouteHandlerMap = new Map()
+  private handlerMap: WSRouteHandlerMap = {}
   private namespace: string = '/'
 
   constructor(io: SocketIO.Server) {
@@ -57,7 +57,7 @@ class WSRouter {
    */
   of(namespace: string): WSRouter {
     this.namespace = namespace
-    this.handlerMap.set(namespace, new Map())
+    this.handlerMap[namespace] = {}
 
     !this.hasInit(namespace) && this.initNamespace()
 
@@ -73,8 +73,8 @@ class WSRouter {
    * @memberof WS
    */
   on(route: string, handler: WSRouteHandler): WSRouter {
-    let nsp = this.handlerMap.get(this.namespace)
-    nsp.set(route, this.wrapHandler(handler))
+    let nsp = this.handlerMap[this.namespace]
+    nsp[route] = this.wrapHandler(handler)
 
     return this
   }
@@ -96,10 +96,10 @@ class WSRouter {
   }
 
   private getHandler(namespace: string, route: string = FALLBACK_NAME): WSRouteMiddleware {
-    let nsp = this.handlerMap.get(namespace)
-    let handlerName = nsp.has(route) ? route : FALLBACK_NAME
+    let nsp = this.handlerMap[namespace]
+    let handlerName = nsp[route] !== void 0 ? route : FALLBACK_NAME
 
-    return nsp.get(handlerName) || noop
+    return nsp[handlerName] || noop
   }
 
   private wrapHandler(handler: WSRouteHandler): WSRouteMiddleware {
